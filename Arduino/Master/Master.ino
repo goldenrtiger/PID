@@ -25,21 +25,19 @@ float refVoltage = 5.0;
 typedef struct data_type {
   String title;
   long   pause;
-}
-data_type;
+} data_type;
       
 // state structure of the thread
 typedef struct state_type {
   char stack[500];
   data_type data;
-}
-state_type;
+} state_type;
 
 // static allocate the state variables
 state_type stateCommThread;
 // sync barier for sharing the printer
 void * mutex_serial = NULL;
-__attribute__((OS_task)) void thread_loop(void);
+__attribute__((OS_task)) void commThreadLoop(void);
 
 //-- end of thread
 
@@ -47,6 +45,22 @@ __attribute__((OS_task)) void thread_loop(void);
 int wireAddres0 = 10;
 //-- end of Wire
 
+//-- I2C structure
+typedef struct __attribute__ ((packed)) {
+  byte cmd;
+  byte No;
+  float value0;
+  float value1;
+  float value2;
+  float value3;
+  float value4;
+  float value5;
+  float value6;
+} I2CTransferStruct;
+
+I2CTransferStruct I2CData;
+byte * pI2CData = NULL;
+//-- end of I2C structure
 
 void setup() {
   // analogReference (EXTERNAL) ;
@@ -58,12 +72,13 @@ void setup() {
   // need to enable for spawn call
   schedule();
   
-  // spawn the flow PID
+  // spawn the flow Comm
   stateCommThread.data.title = "Comm";
   stateCommThread.data.pause = 200;
   spawn(&stateCommThread.data, &commThreadLoop);
 
   Wire.begin();  
+  pI2CData = (byte *)&I2CData;
 }
 
 void loop() {
@@ -114,7 +129,15 @@ void commThreadLoop(void)
 void wireWrite()
 {
   Wire.beginTransmission(wireAddres0);
-  Wire.write("V:0,1 \n");
+  I2CData.cmd = 2;
+  I2CData.No = 0;
+  I2CData.value0 = 1.12;
+  I2CData.value1 = 2.98;
+  I2CData.value2 = 35.89;
+  for(int i = 0;i < sizeof(I2CData);i++)
+  {
+    Wire.write(pI2CData[i]);
+  }
   Wire.endTransmission();
 
 }
