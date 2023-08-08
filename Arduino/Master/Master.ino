@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "Thread.h"
+#include <Wire.h>
 
 int pin_P0In = A0;
 int pin_P1In = A1;
@@ -42,6 +43,10 @@ __attribute__((OS_task)) void thread_loop(void);
 
 //-- end of thread
 
+//-- Wire
+int wireAddres0 = 10;
+//-- end of Wire
+
 
 void setup() {
   // analogReference (EXTERNAL) ;
@@ -51,13 +56,67 @@ void setup() {
   Serial2.begin(9600);
 
   // need to enable for spawn call
-    schedule();
+  schedule();
   
   // spawn the flow PID
-    stateCommThread.data.title = "Comm";
-    stateCommThread.data.pause = 200;
-    spawn(&stateCommThread.data, &commThreadLoop);
+  stateCommThread.data.title = "Comm";
+  stateCommThread.data.pause = 200;
+  spawn(&stateCommThread.data, &commThreadLoop);
+
+  Wire.begin();  
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  averageAnalogReading(pin_P0In, pin_P1In, &val0, &val1, false);
+  val0 = val0 * val0_offset;
+  val1 = val1 * val1_offset;
   
+  //-- receive message for calibration
+  if (Serial.available() >= 1)
+  {
+    rStr = Serial.readString();
+    rStr.trim();
+    if (rStr == "Calibration")
+    {      
+      val0_offset = voltageCalibrate(val0);
+      val1_offset = voltageCalibrate(val1);
+      
+      Serial.write("Calibration done!\r\n");
+      strCombinePrint(val0_offset, val1_offset);
+      Serial2.write("Calibration done!\r\n");
+      Serial2.println(String(val0_offset) + ',' + String(val1_offset));
+    }
+  }
+  //-- end of calibration
+
+  float voltage0 = analog2Voltage(val0);
+  float voltage1 = analog2Voltage(val1);
+
+  pressure0 = voltage2Pressure(voltage0);
+  pressure1 = voltage2Pressure(voltage1);
+
+  strCombinePrint(voltage0, voltage1);
+  strCombinePrint(pressure0, pressure1);   
+  
+  wireWrite();   
+  
+  delay(200);
+}
+
+void commThreadLoop(void)
+{
+  Serial.print("commThreadLoop \n");
+  //wireWrite();
+  delay(((data_type*)thread)->pause);
+}
+
+void wireWrite()
+{
+  Wire.beginTransmission(wireAddres0);
+  Wire.write("V:0,1 \n");
+  Wire.endTransmission();
+
 }
 
 //https://arduino.stackexchange.com/questions/1013/how-do-i-split-an-incoming-string
@@ -151,47 +210,4 @@ void strCombinePrint(float input0, float input1)
 {
   String str = String(input0) + ',' + String(input1);
   Serial.println(str);
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  averageAnalogReading(pin_P0In, pin_P1In, &val0, &val1, false);
-  val0 = val0 * val0_offset;
-  val1 = val1 * val1_offset;
-  
-  //-- receive message for calibration
-  if (Serial.available() >= 1)
-  {
-    rStr = Serial.readString();
-    rStr.trim();
-    if (rStr == "Calibration")
-    {      
-      val0_offset = voltageCalibrate(val0);
-      val1_offset = voltageCalibrate(val1);
-      
-      Serial.write("Calibration done!\r\n");
-      strCombinePrint(val0_offset, val1_offset);
-      Serial2.write("Calibration done!\r\n");
-      Serial2.println(String(val0_offset) + ',' + String(val1_offset));
-    }
-  }
-  //-- end of calibration
-
-  float voltage0 = analog2Voltage(val0);
-  float voltage1 = analog2Voltage(val1);
-
-  pressure0 = voltage2Pressure(voltage0);
-  pressure1 = voltage2Pressure(voltage1);
-
-  strCombinePrint(voltage0, voltage1);
-  strCombinePrint(pressure0, pressure1);      
-  
-  delay(200);
-}
-
-void commThreadLoop(void)
-{
-  Serial.print("commThreadLoop \n");
-
-  delay(((data_type*)thread)->pause);
 }
