@@ -1,4 +1,7 @@
+#include <Thread.h>
+
 #include <Arduino.h>
+#include "Thread.h"
 
 int pin_P0In = A0;
 int pin_P1In = A1;
@@ -17,12 +20,43 @@ float pressure1 = 0.0;
 
 float refVoltage = 5.0;
 
+//-- Thread
+typedef struct data_type {
+  String title;
+  long   pause;
+}
+data_type;
+      
+// state structure of the thread
+typedef struct state_type {
+  char stack[500];
+  data_type data;
+}
+state_type;
+
+// static allocate the state variables
+state_type stateCommThread;
+// sync barier for sharing the printer
+void * mutex_serial = NULL;
+__attribute__((OS_task)) void thread_loop(void);
+
+//-- end of thread
+
+
 void setup() {
   // analogReference (EXTERNAL) ;
   
   // put your setup code here, to run once:
   Serial.begin(9600);
   Serial2.begin(9600);
+
+  // need to enable for spawn call
+    schedule();
+  
+  // spawn the flow PID
+    stateCommThread.data.title = "Comm";
+    stateCommThread.data.pause = 200;
+    spawn(&stateCommThread.data, &commThreadLoop);
   
 }
 
@@ -153,4 +187,11 @@ void loop() {
   strCombinePrint(pressure0, pressure1);      
   
   delay(200);
+}
+
+void commThreadLoop(void)
+{
+  Serial.print("commThreadLoop \n");
+
+  delay(((data_type*)thread)->pause);
 }
