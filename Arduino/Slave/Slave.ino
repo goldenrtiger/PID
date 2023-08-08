@@ -103,17 +103,20 @@ void loop()
     switch (I2CData.cmd)
     {
     case 10: // update outputs
-      PIDValve0.output = I2CData.value0;
-      PIDValve0.input = I2CData.value1;
-      PIDValve1.output = I2CData.value2;
+      PIDValve0.input = I2CData.value0;
+      PIDValve0.output = I2CData.value1;
+      PIDValve0.setPoint = I2CData.value2;
       PIDValve1.input = I2CData.value3;
-      selfPIDStarted = 2;
+      PIDValve1.output = I2CData.value4;
+      PIDValve1.setPoint = I2CData.value5;
+      selfPIDStarted = 2; // start ML PID
       break;
     case 11: // update inputs, setpoints
       PIDValve0.input = I2CData.value0;
       PIDValve0.setPoint = I2CData.value1;
       PIDValve1.input = I2CData.value2;
       PIDValve1.setPoint = I2CData.value3;
+      selfPIDStarted = 1; // start self PID
       break;
     case 20: // update coefficients
       PIDValve0.kp = I2CData.value0;
@@ -123,11 +126,9 @@ void loop()
       PIDValve1.ki = I2CData.value4;
       PIDValve1.kd = I2CData.value5;
       break;
-    case 21: // start self PID
-      selfPIDStarted = 1;
+    case 21: 
       break;
-    case 22: // start ML PID
-      selfPIDStarted = 0;
+    case 22: 
       break;
     
     default:
@@ -148,6 +149,8 @@ void receiveEvent(int howmany)
     *(pI2CData + idx) = Wire.read();
     idx ++;
   }
+  // Serial.print(I2CData.cmd);
+  // Serial.print(I2CData.value2);
   isI2CDataNew = true;
 }
 

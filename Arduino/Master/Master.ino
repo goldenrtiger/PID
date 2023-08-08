@@ -88,12 +88,10 @@ void loop() {
   val1 = val1 * val1_offset;
   
   //-- receive message for calibration
-  if (Serial.available() >= 1)
-  {
+  if (Serial.available() >= 1) {
     rStr = Serial.readString();
     rStr.trim();
-    if (rStr == "Calibration")
-    {      
+    if (rStr == "Calibration") {      
       val0_offset = voltageCalibrate(val0);
       val1_offset = voltageCalibrate(val1);
       
@@ -101,6 +99,29 @@ void loop() {
       strCombinePrint(val0_offset, val1_offset);
       Serial2.write("Calibration done!\r\n");
       Serial2.println(String(val0_offset) + ',' + String(val1_offset));
+    }
+    else if (rStr.startsWith("PIDML")) { // "PIDML:0.1:0.2:0.3:0.4 \n"
+      I2CData.cmd = 10;
+      I2CData.value1 = getValue(rStr, ':', 1).toFloat(); // output
+      I2CData.value2 = getValue(rStr, ':', 2).toFloat(); // setPoint
+      I2CData.value4 = getValue(rStr, ':', 1).toFloat(); // output
+      I2CData.value5 = getValue(rStr, ':', 2).toFloat(); // setPoint
+
+    }
+    else if (rStr.startsWith("PIDSelf")) { // "PIDSelf:0.1:0.2 \n"
+      I2CData.cmd = 11;
+      I2CData.value1 = getValue(rStr, ':', 1).toFloat(); //setPoint
+      I2CData.value3 = getValue(rStr, ':', 2).toFloat(); //setPoint
+    }
+    else if (rStr.startsWith("PIDCoeff")) { // "PIDCoeff:0.1:0.2:0.3:0.4:0.5:0.6 \n"
+      I2CData.cmd = 20;
+      I2CData.value0 = getValue(rStr, ':', 1).toFloat(); // kp
+      I2CData.value1 = getValue(rStr, ':', 2).toFloat(); // ki
+      I2CData.value2 = getValue(rStr, ':', 3).toFloat(); // kd
+      I2CData.value3 = getValue(rStr, ':', 4).toFloat(); // kp
+      I2CData.value4 = getValue(rStr, ':', 5).toFloat(); // ki
+      I2CData.value5 = getValue(rStr, ':', 6).toFloat(); // kd
+
     }
   }
   //-- end of calibration
@@ -128,18 +149,34 @@ void commThreadLoop(void)
 
 void wireWrite()
 {
-  Wire.beginTransmission(wireAddres0);
-  I2CData.cmd = 2;
-  I2CData.No = 0;
-  I2CData.value0 = 1.12;
-  I2CData.value1 = 2.98;
-  I2CData.value2 = 35.89;
-  for(int i = 0;i < sizeof(I2CData);i++)
-  {
-    Wire.write(pI2CData[i]);
-  }
-  Wire.endTransmission();
+  if (I2CData.cmd ) {
+    byte cmd = I2CData.cmd;
+    Wire.beginTransmission(wireAddres0);    
+    if (I2CData.cmd == 10) { // update outputs
+      I2CData.value0 = pressure0;
+      I2CData.value3 = pressure1;
+      for(int i = 0;i < sizeof(I2CData);i++)
+      {
+        Wire.write(pI2CData[i]);
+      }
+      I2CData.cmd = 0;
+    }
+    else if (I2CData.cmd == 11) { // update inputs, setpoints
+      I2CData.value0 = pressure0; // valve0 input
+      I2CData.value2 = pressure1; // valve1 input
+      I2CData.cmd = 0;
+    }
+    else if (I2CData.cmd == 20 || I2CData.cmd == 21 || I2CData.cmd == 22) { // update coefficients
+      I2CData.cmd = 0;
+    }
 
+    Wire.write(cmd);
+    for(int i = 1;i < sizeof(I2CData);i++)
+    {
+      Wire.write(pI2CData[i]);
+    }
+    Wire.endTransmission();
+  }
 }
 
 //https://arduino.stackexchange.com/questions/1013/how-do-i-split-an-incoming-string
