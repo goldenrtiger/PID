@@ -87,7 +87,63 @@ void loop() {
   val0 = val0 * val0_offset;
   val1 = val1 * val1_offset;
   
-  //-- receive message for calibration
+
+  float voltage0 = analog2Voltage(val0);
+  float voltage1 = analog2Voltage(val1);
+
+  pressure0 = voltage2Pressure(voltage0);
+  pressure1 = voltage2Pressure(voltage1);
+
+  //strCombinePrint(voltage0, voltage1);
+  strCombinePrint(pressure0, pressure1);   
+  
+  wireWrite();   
+  
+  delay(200);
+}
+
+void commThreadLoop(void)
+{
+  //Serial.print("commThreadLoop \n");
+  serialHandle();
+  delay(((data_type*)thread)->pause);
+}
+
+void wireWrite()
+{
+  if (I2CData.cmd ) {
+    byte cmd = I2CData.cmd;
+    Wire.beginTransmission(wireAddres0);    
+    if (I2CData.cmd == 10) { // update outputs
+      I2CData.value0 = pressure0;
+      I2CData.value3 = pressure1;
+      for(int i = 0;i < sizeof(I2CData);i++)
+      {
+        Wire.write(pI2CData[i]);
+      }
+      I2CData.cmd = 0;
+    }
+    else if (I2CData.cmd == 11) { // update inputs, setpoints
+      I2CData.value0 = pressure0; // valve0 input
+      I2CData.value2 = pressure1; // valve1 input
+      I2CData.cmd = 0;
+    }
+    else if (I2CData.cmd == 20 || I2CData.cmd == 21 || I2CData.cmd == 22) { // update coefficients
+      I2CData.cmd = 0;
+    }
+
+    Wire.write(cmd);
+    for(int i = 1;i < sizeof(I2CData);i++)
+    {
+      Wire.write(pI2CData[i]);
+    }
+    Wire.endTransmission();
+  }
+}
+
+void serialHandle()
+{
+  //-- receive message for calibration, ,,,
   if (Serial.available() >= 1) {
     rStr = Serial.readString();
     rStr.trim();
@@ -125,58 +181,6 @@ void loop() {
     }
   }
   //-- end of calibration
-
-  float voltage0 = analog2Voltage(val0);
-  float voltage1 = analog2Voltage(val1);
-
-  pressure0 = voltage2Pressure(voltage0);
-  pressure1 = voltage2Pressure(voltage1);
-
-  strCombinePrint(voltage0, voltage1);
-  strCombinePrint(pressure0, pressure1);   
-  
-  wireWrite();   
-  
-  delay(200);
-}
-
-void commThreadLoop(void)
-{
-  Serial.print("commThreadLoop \n");
-  //wireWrite();
-  delay(((data_type*)thread)->pause);
-}
-
-void wireWrite()
-{
-  if (I2CData.cmd ) {
-    byte cmd = I2CData.cmd;
-    Wire.beginTransmission(wireAddres0);    
-    if (I2CData.cmd == 10) { // update outputs
-      I2CData.value0 = pressure0;
-      I2CData.value3 = pressure1;
-      for(int i = 0;i < sizeof(I2CData);i++)
-      {
-        Wire.write(pI2CData[i]);
-      }
-      I2CData.cmd = 0;
-    }
-    else if (I2CData.cmd == 11) { // update inputs, setpoints
-      I2CData.value0 = pressure0; // valve0 input
-      I2CData.value2 = pressure1; // valve1 input
-      I2CData.cmd = 0;
-    }
-    else if (I2CData.cmd == 20 || I2CData.cmd == 21 || I2CData.cmd == 22) { // update coefficients
-      I2CData.cmd = 0;
-    }
-
-    Wire.write(cmd);
-    for(int i = 1;i < sizeof(I2CData);i++)
-    {
-      Wire.write(pI2CData[i]);
-    }
-    Wire.endTransmission();
-  }
 }
 
 //https://arduino.stackexchange.com/questions/1013/how-do-i-split-an-incoming-string
