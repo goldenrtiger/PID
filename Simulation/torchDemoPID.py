@@ -3,9 +3,9 @@ import math
 import time
 
 '''
-    torch: 1.10.2
-    python:3.6.10
-    matplotlib: 2.2.3
+    torch: 1.10.2/ 2.0.1
+    python:3.6.10/ 3.8.10
+    matplotlib: 2.2.3/ 3.7.2
 '''
 '''
 PID:
