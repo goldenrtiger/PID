@@ -3,6 +3,11 @@ import math
 import time
 
 '''
+    torch: 1.10.2
+    python:3.6.10
+    matplotlib: 2.2.3
+'''
+'''
 PID:
 '''
 en, esum, ed = 1.0, 1.0, 1.0
@@ -33,12 +38,15 @@ def printWeight(net):
 
 # 2 hidden layers: 4 and 6 neurons, and 1 output neurons
 net = torch.nn.Sequential(
+    torch.nn.Linear(3, 1), # PID
+    # torch.nn.ReLU(),
+
+    #followed by system model
+    torch.nn.Linear(1, 3),
+    torch.nn.ReLU(),
+    torch.nn.Linear(3, 3),
+    torch.nn.ReLU(),
     torch.nn.Linear(3, 1),
-    # torch.nn.ReLU(),
-    # torch.nn.Linear(1, 3),
-    # torch.nn.ReLU(),
-    torch.nn.Linear(1, 1),
-    # torch.nn.ReLU(),
 )
 
 # with torch.no_grad():
@@ -53,7 +61,7 @@ net = torch.nn.Sequential(
 
 # printWeight(net)
 
-num_generation = 20
+num_generation = 500
 optimizer = torch.optim.Adam(net.parameters(), lr=0.1)
 loss = []
 
