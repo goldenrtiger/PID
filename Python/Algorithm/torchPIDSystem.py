@@ -28,6 +28,8 @@ class Net:
         x = torch.tensor([self.en, self.esum, self.ed])
         # calculate
         y = self.net.forward(x)
+        y0 = self.net[0].forward(x)
+        # print(f'y0: {y0}, y: {y}')
         self.__PIDVaribles() # update x
 
         l = abs(y - self.realOutput)
@@ -38,5 +40,5 @@ class Net:
         # optimize
         self.optimizer.step()
 
-        return y.detach().numpy()[0] # as PID output 
+        return y0.detach().numpy()[0] # as PID output 
 
