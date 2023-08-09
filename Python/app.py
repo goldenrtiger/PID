@@ -4,7 +4,7 @@ import timeit
 import os
 
 import nSerial
-from Algorithm import torchPID
+from Algorithm import torchPIDSystem
 
 #-- Thread
 thread = None
@@ -27,7 +27,7 @@ def serialHandle(serialName:str):
             print(f'pressure0:{p0}, pressure1:{p1}')
             setpoint0, setpoint1 = 0.3, 0.2
             t = time.time()
-            MLPID0 = torchPID.Net()
+            MLPID0 = torchPIDSystem.Net()
             output0 = round(MLPID0.train(setpoint0, p0),2)
             print(f'time in generating output0: {time.time() - t}')
             #todo
