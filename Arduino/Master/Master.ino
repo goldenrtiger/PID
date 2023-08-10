@@ -66,8 +66,9 @@ void setup() {
   // analogReference (EXTERNAL) ;
   
   // put your setup code here, to run once:
-  Serial.begin(9600);
-  Serial2.begin(9600);
+  Serial.begin(115200);
+  Serial.setTimeout(200);
+  Serial2.begin(115200);
 
   // need to enable for spawn call
   schedule();
@@ -96,7 +97,8 @@ void loop() {
 
   //strCombinePrint(voltage0, voltage1);
   strCombinePrint(pressure0, pressure1);   
-  
+
+  serialHandle();
   wireWrite();   
   
   delay(200);
@@ -105,7 +107,7 @@ void loop() {
 void commThreadLoop(void)
 {
   //Serial.print("commThreadLoop \n");
-  serialHandle();
+  // serialHandle();
   delay(((data_type*)thread)->pause);
 }
 
@@ -157,12 +159,15 @@ void serialHandle()
       Serial2.println(String(val0_offset) + ',' + String(val1_offset));
     }
     else if (rStr.startsWith("PIDML")) { // "PIDML:0.1:0.2:0.3:0.4 \n"
+      byte idxBuf[10];
+      splitDelimiter(rStr, ':', idxBuf);
+      Serial.print(idxBuf[1]);
+      Serial.print(idxBuf[2]);
+      I2CData.value1 = (rStr.substring(idxBuf[1], idxBuf[2] - 1)).toFloat(); // output
+      I2CData.value2 = (rStr.substring(idxBuf[2], idxBuf[3] - 1)).toFloat(); // setPoint
+      I2CData.value4 = (rStr.substring(idxBuf[3], idxBuf[4] - 1)).toFloat(); // output
+      I2CData.value5 = (rStr.substring(idxBuf[4], idxBuf[5] - 1)).toFloat(); // setPoint
       I2CData.cmd = 10;
-      I2CData.value1 = getValue(rStr, ':', 1).toFloat(); // output
-      I2CData.value2 = getValue(rStr, ':', 2).toFloat(); // setPoint
-      I2CData.value4 = getValue(rStr, ':', 1).toFloat(); // output
-      I2CData.value5 = getValue(rStr, ':', 2).toFloat(); // setPoint
-
     }
     else if (rStr.startsWith("PIDSelf")) { // "PIDSelf:0.1:0.2 \n"
       I2CData.cmd = 11;
@@ -198,6 +203,23 @@ String getValue(String data, char separator, int index)
         }
     }
     return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+void splitDelimiter(String data, char delimiter, byte* pIdxBuf)
+{
+  if(pIdxBuf == NULL)
+    return; 
+
+  int maxIndex = data.length() - 1;
+  int j = 0;
+
+  *(pIdxBuf + j) = 0;
+  for(int i = 0;i <= maxIndex;i++) {
+    if (data.charAt(i) == delimiter) {
+      j++;
+      *(pIdxBuf + j) = i + 1;
+    }
+  }
 }
 
 void averageAnalogReading(int pin0, int pin1, float *pVal0, float *pVal1, bool flag)

@@ -18,9 +18,12 @@ def decodeSerialData(data):
 
     return asc_serial_data.split(',')
 
+def encodeMessage(message:str)->bytes:
+    return (message + '\r\n').encode('utf-8')    
+
 def serialHandle(serialName:str):
     ser = nSerial.serialDo(serialName)
-    if ser.open(9600, 8, timeout=None):
+    if ser.open(115200, 8, timeout=None):
         while True:
             decode_serial_data = decodeSerialData(ser.read_until(b'\n'))
             p0, p1 = float(decode_serial_data[0]), float(decode_serial_data[1])
@@ -33,6 +36,9 @@ def serialHandle(serialName:str):
             #todo
             output1 = round(MLPID0.train(setpoint1, p1),2)
             print('output0:{:.2f}, output1:{:.2f}'.format(output0, output1))
+            message = "PIDML:" + str(output0) + ":" + str(setpoint0) + ":" + str(output1) + ":" + str(setpoint1) 
+            print(f"serial write: {encodeMessage(message)}")
+            ser.write(encodeMessage(message))
             
             time.sleep(0.2)
             
