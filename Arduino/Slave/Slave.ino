@@ -70,7 +70,7 @@ void setup()
 {
   Wire.begin(10);
   Wire.onReceive(receiveEvent);
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   pinMode(pinV0, OUTPUT);
   pinMode(pinV1, OUTPUT);
@@ -150,7 +150,8 @@ void receiveEvent(int howmany)
     idx ++;
   }
   // Serial.print(I2CData.cmd);
-  // Serial.print(I2CData.value2);
+  // Serial.println(",");
+  // Serial.print(I2CData.value1);
   isI2CDataNew = true;
 }
 
@@ -162,10 +163,10 @@ void PIDThreadLoop(void)
       PIDCompute(&PIDValve0);
       PIDCompute(&PIDValve1);
     }
-
+    // Serial.println("\r\n start to do outputs");
     outputs(&PIDValve0);
-    outputs(&PIDValve1);
-
+    //outputs(&PIDValve1);
+    selfPIDStarted = 0;
   }
     // unblocked delay
   delay(((data_type*)thread)->pause);
@@ -180,12 +181,28 @@ void outputs(PIDStruct *structPID)
   int flip = structPID->output > 1 ? 1 : (100 - int(structPID->output * 100));
   float diff = structPID->setPoint - structPID->input;
 
-  if ((structPID->flipCnt % 100 < flip) && (diff > 0) && (structPID->setPoint == 0)) {
+  strCombinePrint(structPID->setPoint, structPID->input, structPID->output, flip);
+  if ((structPID->flipCnt % 100 < flip) && (diff > 0) && (structPID->setPoint != 0)) {
     openValve(true, structPID->pin);
+    Serial.println("Open valve");
   }
   else {
     openValve(false, structPID->pin);
+    Serial.println("Close valve");
   }
+}
+
+void strCombinePrint(float input0, float input1, float input2, float input3)
+{
+  Serial.print(input0);
+  Serial.println(",");
+  Serial.print(input1);
+  Serial.println(",");
+  Serial.print(input2);
+  Serial.println(",");
+  Serial.print(input3);
+  Serial.println(",");
+  
 }
 
 void openValve(bool open, int pin)

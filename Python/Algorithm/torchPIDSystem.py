@@ -29,7 +29,8 @@ class Net:
         # calculate
         y = self.net.forward(x)
         y0 = self.net[0].forward(x)
-        # print(f'y0: {y0}, y: {y}')
+        # print(f'weights of self.net[0]: {self.net[0].weight}')
+        # print(f'bias of self.net[0]: {self.net[0].bias}')
         self.__PIDVaribles() # update x
 
         l = abs(y - self.realOutput)

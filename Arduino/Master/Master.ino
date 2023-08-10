@@ -67,7 +67,7 @@ void setup() {
   
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.setTimeout(200);
+  Serial.setTimeout(100);
   Serial2.begin(115200);
 
   // need to enable for spawn call
@@ -88,7 +88,6 @@ void loop() {
   val0 = val0 * val0_offset;
   val1 = val1 * val1_offset;
   
-
   float voltage0 = analog2Voltage(val0);
   float voltage1 = analog2Voltage(val1);
 
@@ -149,20 +148,18 @@ void serialHandle()
   if (Serial.available() >= 1) {
     rStr = Serial.readString();
     rStr.trim();
-    if (rStr == "Calibration") {      
+    if (rStr.startsWith("Calibration")) {      
       val0_offset = voltageCalibrate(val0);
       val1_offset = voltageCalibrate(val1);
       
       Serial.write("Calibration done!\r\n");
-      strCombinePrint(val0_offset, val1_offset);
+      // strCombinePrint(val0_offset, val1_offset);
       Serial2.write("Calibration done!\r\n");
       Serial2.println(String(val0_offset) + ',' + String(val1_offset));
     }
     else if (rStr.startsWith("PIDML")) { // "PIDML:0.1:0.2:0.3:0.4 \n"
       byte idxBuf[10];
       splitDelimiter(rStr, ':', idxBuf);
-      Serial.print(idxBuf[1]);
-      Serial.print(idxBuf[2]);
       I2CData.value1 = (rStr.substring(idxBuf[1], idxBuf[2] - 1)).toFloat(); // output
       I2CData.value2 = (rStr.substring(idxBuf[2], idxBuf[3] - 1)).toFloat(); // setPoint
       I2CData.value4 = (rStr.substring(idxBuf[3], idxBuf[4] - 1)).toFloat(); // output

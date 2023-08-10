@@ -20,6 +20,9 @@ class serialDo:
             return self.ser.is_open
         else :
             return False
+    
+    def flush(self):
+        self.ser.flush()
 
     def open(self, baud, bytesize, parity=serial.PARITY_NONE, timeout=1):
         # with serial.Serial(self.port, baudrate=baud, bytesize=bytesize, parity=parity, stopbits=1, timeout=timeout) as self.ser:
@@ -56,7 +59,7 @@ class serialDo:
     def write(self, data):
         try:
             data_length = self.ser.write(data)
-            print('serial.write has written', data_length, ' bytes of data')
+            # print('serial.write has written', data_length, ' bytes of data')
         except ValueError:
             print('command: serial.write. Exception: ValueError')            
         # except Exception:
