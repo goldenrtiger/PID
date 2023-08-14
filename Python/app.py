@@ -47,8 +47,9 @@ def serialHandle(serialName:str):
                 output0 = round(MLPID0.train(setpoint0, p0),2)
                 # print(f'time in generating output0: {time.time() - t} **: {datetime.fromtimestamp(t)}.')
                 #todo
-                output1 = round(MLPID0.train(setpoint1, p1),2)
-                # print('***output0:{:.2f}, output1:{:.2f}'.format(output0, output1))
+                # output1 = round(MLPID0.train(setpoint1, p1),2)
+                output1 = 0
+                print('***output0:{:.2f}, output1:{:.2f}'.format(output0, output1))
                 message = "PIDML:" + str(output0) + ":" + str(setpoint0) + ":" + str(output1) + ":" + str(setpoint1) 
                 ser.write(encodeMessage(message))
                 

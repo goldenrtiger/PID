@@ -4,8 +4,10 @@
 #include <TimerOne.h>
 
 
-int pinV0 = 3;
-int pinV1 = 4;
+const int pinV0 = 3;
+const int pinV1 = 4;
+const int ledPin = LED_BUILTIN;
+int ledState = LOW;
 
 // high is closed, low is open.
 
@@ -60,6 +62,7 @@ void setup()
 
   pinMode(pinV0, OUTPUT);
   pinMode(pinV1, OUTPUT);
+  // pinMode(LED_BUILTIN, OUTPUT);
 
   // S070C-SBG-32
   // high is closed, low is open.
@@ -81,7 +84,15 @@ void setup()
 
 void loop()
 {
-
+  if (ledState == LOW) {
+    ledState = HIGH;
+  } else {
+    ledState = LOW;
+  }
+  digitalWrite(ledPin, ledState);
+  noInterrupts();
+  Serial.println("loop");
+  interrupts();
   delay(500);
 }
 void timerCallback()
@@ -108,6 +119,9 @@ void receiveEvent(int howmany)
 void PIDThreadLoop(void)
 {
   // Serial.print("PIDThreadLoop \n");
+
+  digitalWrite(pinV0, ledState);
+
   if (isI2CDataNew) {
     isI2CDataNew = false;
     switch (I2CData.cmd)
@@ -165,17 +179,21 @@ void outputs(PIDStruct *structPID)
 
   int timeCnt = 50;
   structPID->flipCnt ++;
+  // strCombinePrint(structPID->setPoint, structPID->input, structPID->output, 0);
 
-  if (structPID->output > 0) {
+  float output = abs(structPID->output);
+  if (output < 0) {
     openValve(false, structPID->pin);
     Serial.println("Close valve");
   }
   else{
-    int flip = structPID->output > 1 ? 1 : (int(structPID->output * timeCnt));
+    int flip = output > 1 ? 1 : (int(output * timeCnt));
     float diff = structPID->setPoint - structPID->input;
 
-    strCombinePrint(structPID->setPoint, structPID->input, structPID->output, flip);
-    if ((structPID->output > 0) && (structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
+    strCombinePrint(structPID->setPoint, structPID->input, structPID->output, 0);
+
+    // if ((output > 0) && (structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
+    if ((structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
       openValve(true, structPID->pin);
       Serial.println("Open valve");
     }
@@ -189,14 +207,16 @@ void outputs(PIDStruct *structPID)
 
 void strCombinePrint(float input0, float input1, float input2, float input3)
 {
-  Serial.print(input0);
-  Serial.println(",");
-  Serial.print(input1);
-  Serial.println(",");
-  Serial.print(input2);
-  Serial.println(",");
-  Serial.print(input3);
-  Serial.println(",");
+  // Serial.print(input0);
+  // Serial.println(",");
+  // Serial.print(input1);
+  // Serial.println(",");
+  // Serial.print(input2);
+  // Serial.println(",");
+  // Serial.print(input3);
+  // Serial.println(",");
+  String str = String(input0) + ',' + String(input1)+ ',' + String(input2)+ ',' + String(input3);
+  Serial.println(str);
   
 }
 
