@@ -107,7 +107,7 @@ void receiveEvent(int howmany)
 
 void PIDThreadLoop(void)
 {
-  Serial.print("PIDThreadLoop \n");
+  // Serial.print("PIDThreadLoop \n");
   if (isI2CDataNew) {
     isI2CDataNew = false;
     switch (I2CData.cmd)

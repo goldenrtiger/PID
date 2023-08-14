@@ -111,6 +111,8 @@ for generation in range(num_generation):
     # printWeight(net)
     writer.add_scalar('Loss/train', l, generation)
     log_value(net[0], writer, generation)
+    writer.add_scalar('Time', time.time() - t, generation)
+
 
 # import matplotlib.pyplot
 # matplotlib.pyplot.plot(loss)

@@ -32,6 +32,7 @@ def serialHandle(serialName:str):
     if ser.open(115200, 8, timeout=None):
         time.sleep(1)
         ser.write(encodeMessage("Calibration"))
+        MLPID0 = torchPIDSystem.Net()
 
         while True:
             asc_serial_data = decodeSerialData(ser.read_until(b'\n'))
@@ -43,12 +44,11 @@ def serialHandle(serialName:str):
                 print(f'***pressure0:{p0}, pressure1:{p1}')
                 setpoint0, setpoint1 = 0.21, 0.2
                 t = time.time()
-                MLPID0 = torchPIDSystem.Net()
                 output0 = round(MLPID0.train(setpoint0, p0),2)
-                print(f'time in generating output0: {time.time() - t} **: {datetime.fromtimestamp(t)}.')
+                # print(f'time in generating output0: {time.time() - t} **: {datetime.fromtimestamp(t)}.')
                 #todo
                 output1 = round(MLPID0.train(setpoint1, p1),2)
-                print('***output0:{:.2f}, output1:{:.2f}'.format(output0, output1))
+                # print('***output0:{:.2f}, output1:{:.2f}'.format(output0, output1))
                 message = "PIDML:" + str(output0) + ":" + str(setpoint0) + ":" + str(output1) + ":" + str(setpoint1) 
                 ser.write(encodeMessage(message))
                 
@@ -56,7 +56,7 @@ def serialHandle(serialName:str):
             
 
 if __name__ == '__main__':
-    serialName = 'COM12'
+    serialName = 'COM4'
     thread = threading.Thread(target=serialHandle, args=(serialName, ), daemon=True)
     thread.start()
 
