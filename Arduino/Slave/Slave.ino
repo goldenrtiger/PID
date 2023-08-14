@@ -177,19 +177,28 @@ void outputs(PIDStruct *structPID)
   if (structPID == NULL)
     return;
 
+  int timeCnt = 50;
   structPID->flipCnt ++;
-  int flip = structPID->output > 1 ? 1 : (100 - int(structPID->output * 100));
-  float diff = structPID->setPoint - structPID->input;
 
-  strCombinePrint(structPID->setPoint, structPID->input, structPID->output, flip);
-  if ((structPID->flipCnt % 100 < flip) && (diff > 0) && (structPID->setPoint != 0)) {
-    openValve(true, structPID->pin);
-    Serial.println("Open valve");
-  }
-  else {
+  if (structPID->output > 0) {
     openValve(false, structPID->pin);
     Serial.println("Close valve");
   }
+  else{
+    int flip = structPID->output > 1 ? 1 : (int(structPID->output * timeCnt));
+    float diff = structPID->setPoint - structPID->input;
+
+    strCombinePrint(structPID->setPoint, structPID->input, structPID->output, flip);
+    if ((structPID->output > 0) && (structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
+      openValve(true, structPID->pin);
+      Serial.println("Open valve");
+    }
+    else {
+      openValve(false, structPID->pin);
+      Serial.println("Close valve");
+    }
+  }
+
 }
 
 void strCombinePrint(float input0, float input1, float input2, float input3)
