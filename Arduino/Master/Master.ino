@@ -1,8 +1,7 @@
-#include <Thread.h>
-
 #include <Arduino.h>
-#include "Thread.h"
+#include <Thread.h>
 #include <Wire.h>
+#include <TimerOne.h>
 
 int pin_P0In = A0;
 int pin_P1In = A1;
@@ -22,23 +21,7 @@ float pressure1 = 0.0;
 float refVoltage = 5.0;
 
 //-- Thread
-typedef struct data_type {
-  String title;
-  long   pause;
-} data_type;
-      
-// state structure of the thread
-typedef struct state_type {
-  char stack[500];
-  data_type data;
-} state_type;
-
-// static allocate the state variables
-state_type stateCommThread;
-// sync barier for sharing the printer
-void * mutex_serial = NULL;
-__attribute__((OS_task)) void commThreadLoop(void);
-
+Thread commThread = Thread();
 //-- end of thread
 
 //-- Wire
@@ -70,13 +53,10 @@ void setup() {
   Serial.setTimeout(100);
   Serial2.begin(115200);
 
-  // need to enable for spawn call
-  schedule();
-  
-  // spawn the flow Comm
-  stateCommThread.data.title = "Comm";
-  stateCommThread.data.pause = 200;
-  spawn(&stateCommThread.data, &commThreadLoop);
+  commThread.onRun(commThreadLoop);
+  commThread.setInterval(200);
+  Timer1.initialize(200000); // 0.2 s
+  Timer1.attachInterrupt(timerCallback);
 
   Wire.begin();  
   pI2CData = (byte *)&I2CData;
@@ -84,20 +64,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  averageAnalogReading(pin_P0In, pin_P1In, &val0, &val1, false);
-  val0 = val0 * val0_offset;
-  val1 = val1 * val1_offset;
-  
-  float voltage0 = analog2Voltage(val0);
-  float voltage1 = analog2Voltage(val1);
-
-  pressure0 = voltage2Pressure(voltage0);
-  pressure1 = voltage2Pressure(voltage1);
-
-  //strCombinePrint(voltage0, voltage1);
-  strCombinePrint(pressure0, pressure1);   
-
-  serialHandle();
+  MLSerial();
   wireWrite();   
   
   delay(200);
@@ -105,9 +72,14 @@ void loop() {
 
 void commThreadLoop(void)
 {
-  //Serial.print("commThreadLoop \n");
-  // serialHandle();
-  delay(((data_type*)thread)->pause);
+  // Serial.print("commThreadLoop \n");
+  analog2Pressure();
+  pressureSending(); 
+}
+
+void timerCallback()
+{
+  commThread.run();
 }
 
 void wireWrite()
@@ -142,7 +114,7 @@ void wireWrite()
   }
 }
 
-void serialHandle()
+void MLSerial()
 {
   //-- receive message for calibration, ,,,
   if (Serial.available() >= 1) {
@@ -244,6 +216,25 @@ void averageAnalogReading(int pin0, int pin1, float *pVal0, float *pVal1, bool f
     *pVal0 = analogRead(pin0);
     *pVal1 = analogRead(pin1);
   }
+}
+
+void analog2Pressure()
+{
+  averageAnalogReading(pin_P0In, pin_P1In, &val0, &val1, false);
+  val0 = val0 * val0_offset;
+  val1 = val1 * val1_offset;
+  
+  float voltage0 = analog2Voltage(val0);
+  float voltage1 = analog2Voltage(val1);
+
+  pressure0 = voltage2Pressure(voltage0);
+  pressure1 = voltage2Pressure(voltage1);
+}
+
+void pressureSending()
+{
+  //strCombinePrint(voltage0, voltage1);
+  strCombinePrint(pressure0, pressure1);   
 }
 
 float voltageCalibrate(float input)

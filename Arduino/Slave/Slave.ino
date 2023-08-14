@@ -1,6 +1,7 @@
 #include <Wire.h>
-#include "Thread.h"
+#include <Thread.h>
 #include <PID_v1.h>
+#include <TimerOne.h>
 
 
 int pinV0 = 3;
@@ -48,22 +49,7 @@ byte selfPIDStarted = 0;
 //-- end of PID 
 
 //-- Thread
-typedef struct data_type {
-  String title;
-  double pause;
-} data_type;
-      
-// state structure of the thread
-typedef struct state_type {
-  char stack[200];
-  data_type data;
-} state_type;
-
-// static allocate the state variables
-state_type PIDThread;
-// sync barier for sharing the printer
-__attribute__((OS_task)) void PIDThreadLoop(void);
-
+Thread PIDThread = Thread();
 //-- end of thread
 
 void setup()
@@ -82,14 +68,11 @@ void setup()
 
   pI2CData = (byte *) &I2CData;
 
-  // need to enable for spawn call
-  schedule();
-  
-  // spawn the flow Comm
-  PIDThread.data.title = "PID";
-  PIDThread.data.pause = 100;
-  spawn(&PIDThread.data, &PIDThreadLoop);
-  
+  PIDThread.onRun(PIDThreadLoop);
+  PIDThread.setInterval(200);
+  Timer1.initialize(200000); // 0.2 s
+  Timer1.attachInterrupt(timerCallback);
+
   PIDValve0.pPID = &myPID0;
   PIDValve0.pin = pinV0;
   PIDValve1.pPID = &myPID1;
@@ -98,6 +81,33 @@ void setup()
 
 void loop()
 {
+
+  delay(500);
+}
+void timerCallback()
+{
+  PIDThread.run();
+}
+
+void receiveEvent(int howmany)
+{
+  char buf[10] = "";
+  int idx = 0;
+  
+  while(Wire.available() >= 1)
+  {
+    *(pI2CData + idx) = Wire.read();
+    idx ++;
+  }
+  // Serial.print(I2CData.cmd);
+  // Serial.println(",");
+  // Serial.print(I2CData.value1);
+  isI2CDataNew = true;
+}
+
+void PIDThreadLoop(void)
+{
+  Serial.print("PIDThreadLoop \n");
   if (isI2CDataNew) {
     isI2CDataNew = false;
     switch (I2CData.cmd)
@@ -135,28 +145,6 @@ void loop()
       break;
     }
   }
-  delay(100);
-}
-
-
-void receiveEvent(int howmany)
-{
-  char buf[10] = "";
-  int idx = 0;
-  
-  while(Wire.available() >= 1)
-  {
-    *(pI2CData + idx) = Wire.read();
-    idx ++;
-  }
-  // Serial.print(I2CData.cmd);
-  // Serial.println(",");
-  // Serial.print(I2CData.value1);
-  isI2CDataNew = true;
-}
-
-void PIDThreadLoop(void)
-{
   if (selfPIDStarted) {
     if (selfPIDStarted == 1) {
     // run PID algorithm to get output
@@ -168,8 +156,6 @@ void PIDThreadLoop(void)
     //outputs(&PIDValve1);
     selfPIDStarted = 0;
   }
-    // unblocked delay
-  delay(((data_type*)thread)->pause);
 }
 
 void outputs(PIDStruct *structPID)
