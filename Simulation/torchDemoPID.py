@@ -1,6 +1,7 @@
 import torch
 import math
 import time
+from torch.utils.tensorboard import SummaryWriter
 
 '''
     torch: 1.10.2/ 2.0.1
@@ -26,7 +27,7 @@ def update(t):
     esum += en
     ed = en - en1
     setPoint = output
-    print('update:', en, esum, ed)
+    # print('update:', en, esum, ed)
 
     return setPoint
 
@@ -64,22 +65,40 @@ net = torch.nn.Sequential(
 num_generation = 500
 optimizer = torch.optim.Adam(net.parameters(), lr=0.1)
 loss = []
+writer = SummaryWriter()
+
+def log_grad(model, logger, step):
+    for tag, value in model.named_parameters():
+        if value.grad is not None:
+            logger.add_histogram(tag + '/grad', value.grad.cpu(), step)
+
+def log_value(model, logger, step):
+    for tag, value in model.named_parameters():
+        l = value.tolist()
+        if tag == 'weight':
+            # print(f'tag: {tag}. value: {value}. value0: {l[0][0]}')
+            logger.add_scalar(tag + '/value0', l[0][0], step)
+            logger.add_scalar(tag + '/value1', l[0][1], step)
+            logger.add_scalar(tag + '/value2', l[0][2], step)
+        elif tag == 'bias':
+            logger.add_scalar(tag + '/bias', l[0], step)
+
 
 for generation in range(num_generation):
     t = time.time()
     # printWeight(net)
-    print(f'---------generation: {generation}-----------')
+    # print(f'---------generation: {generation}-----------')
     input = torch.tensor([en, esum, ed])
     # print('input=:\n', input)
 
     output = net.forward(input)
-    print('output=net.forward(input):\n',output)
+    # print('output=net.forward(input):\n',output)
 
     target = update(generation)
-    print('Target:\n',target)
+    # print('Target:\n',target)
 
     l = abs(target - output)
-    print('*Loss:\n', l)
+    # print('*Loss:\n', l)
     loss.append(l.detach().numpy())
     optimizer.zero_grad() # clear x.grad for every parameter x in the optimizer.
     l.backward()
@@ -87,11 +106,17 @@ for generation in range(num_generation):
 
     optimizer.step()
 
-    print(f'total time: {time.time() - t}')
-    printWeight(net)
+    # print(f'total time: {time.time() - t}')
 
-import matplotlib.pyplot
-matplotlib.pyplot.plot(loss)
-matplotlib.pyplot.xlabel("Iteration")
-matplotlib.pyplot.ylabel("loss")
-matplotlib.pyplot.show()
+    # printWeight(net)
+    writer.add_scalar('Loss/train', l, generation)
+    log_value(net[0], writer, generation)
+
+# import matplotlib.pyplot
+# matplotlib.pyplot.plot(loss)
+# matplotlib.pyplot.xlabel("Iteration")
+# matplotlib.pyplot.ylabel("loss")
+# matplotlib.pyplot.show()
+
+writer.flush()
+writer.close()
