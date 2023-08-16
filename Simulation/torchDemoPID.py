@@ -1,4 +1,6 @@
 import torch
+import torch.nn.functional as F
+
 import math
 import time
 from torch.utils.tensorboard import SummaryWriter
@@ -27,44 +29,49 @@ def update(t):
     esum += en
     ed = en - en1
     setPoint = output
-    # print('update:', en, esum, ed)
 
     return setPoint
 
-def printWeight(net):
-    print('**Weight gradient net[0] \n',net[0].weight.grad)
-    print('Bias gradient net[0] :\n',net[0].bias.grad)
-    print('**Weight net[0] \n',net[0].weight)
-    print('Bias net[0] :\n',net[0].bias)
-
 # 2 hidden layers: 4 and 6 neurons, and 1 output neurons
-net = torch.nn.Sequential(
-    torch.nn.Linear(3, 1), # PID
-    # torch.nn.ReLU(),
+# net = torch.nn.Sequential(
+#     torch.nn.Linear(3, 1), # PID
+#     torch.nn.Sigmoid(),
 
-    #followed by system model
-    torch.nn.Linear(1, 3),
-    torch.nn.ReLU(),
-    torch.nn.Linear(3, 3),
-    torch.nn.ReLU(),
-    torch.nn.Linear(3, 1),
-)
+#     #followed by system model
+#     torch.nn.Linear(1, 3),
+#     torch.nn.ReLU(),
+#     torch.nn.Linear(3, 3),
+#     torch.nn.ReLU(),
+#     torch.nn.Linear(3, 1),
+# )
 
-# with torch.no_grad():
-#     net[0].weight[0,1] = 0.0
-#     net[0].weight[0,2] = 0.0
 
-#     net[0].weight[1,0] = 0.0
-#     net[0].weight[1,2] = 0.0
+class myModel(torch.nn.Module):
+    def __init__(self):
+        super(myModel, self).__init__()
+        self.fc0 = torch.nn.Linear(3,1)
+        self.fc1 = torch.nn.Linear(1,3)
+        self.fc2 = torch.nn.Linear(3,3)
+        self.fc3 = torch.nn.Linear(3,1)
+    
+    def forward(self, x):
+        # x = F.sigmoid(self.fc0(x))
+        x = self.fc0(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
 
-#     net[0].weight[2,0] = 0.0
-#     net[0].weight[2,1] = 0.0
+activation = {}
+def get_activation(name):
+    def hook(model, input, output):
+        activation[name] = output.detach()
+    return hook
 
-# printWeight(net)
+net = myModel()
+net.fc0.register_forward_hook(get_activation('fc0'))
 
-num_generation = 500
+num_generation = 5000
 optimizer = torch.optim.Adam(net.parameters(), lr=0.1)
-loss = []
 writer = SummaryWriter()
 
 def log_grad(model, logger, step):
@@ -86,39 +93,24 @@ def log_value(model, logger, step):
 
 for generation in range(num_generation):
     t = time.time()
-    # printWeight(net)
-    # print(f'---------generation: {generation}-----------')
     input = torch.tensor([en, esum, ed])
-    # print('input=:\n', input)
 
     output = net.forward(input)
-    # print('output=net.forward(input):\n',output)
+    output0 = activation['fc0']
 
-    target = update(generation)
-    # print('Target:\n',target)
+    target = torch.tensor(update(generation))
 
-    l = abs(target - output)
-    # print('*Loss:\n', l)
-    loss.append(l.detach().numpy())
+    fLoss = torch.nn.MSELoss()
+    l = fLoss(target, output)
+    # l = target - output
     optimizer.zero_grad() # clear x.grad for every parameter x in the optimizer.
     l.backward()
-    # print('network structure: \n', net)
 
     optimizer.step()
 
-    # print(f'total time: {time.time() - t}')
-
-    # printWeight(net)
     writer.add_scalar('Loss/train', l, generation)
-    log_value(net[0], writer, generation)
+    log_value(net.fc0, writer, generation)
     writer.add_scalar('Time', time.time() - t, generation)
-
-
-# import matplotlib.pyplot
-# matplotlib.pyplot.plot(loss)
-# matplotlib.pyplot.xlabel("Iteration")
-# matplotlib.pyplot.ylabel("loss")
-# matplotlib.pyplot.show()
 
 writer.flush()
 writer.close()
