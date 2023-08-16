@@ -73,7 +73,7 @@ void setup()
 
   PIDThread.onRun(PIDThreadLoop);
   PIDThread.setInterval(200);
-  Timer1.initialize(200000); // 0.2 s
+  Timer1.initialize(10000); // 0.01 s
   Timer1.attachInterrupt(timerCallback);
 
   PIDValve0.pPID = &myPID0;
@@ -84,17 +84,13 @@ void setup()
 
 void loop()
 {
-  if (ledState == LOW) {
-    ledState = HIGH;
-  } else {
-    ledState = LOW;
-  }
-  digitalWrite(ledPin, ledState);
-  noInterrupts();
-  Serial.println("loop");
-  interrupts();
-  delay(500);
+  // noInterrupts();
+  // Serial.println("loop");
+  // interrupts();
+  ThreadLoop();
+  delay(100);
 }
+
 void timerCallback()
 {
   PIDThread.run();
@@ -116,11 +112,9 @@ void receiveEvent(int howmany)
   isI2CDataNew = true;
 }
 
-void PIDThreadLoop(void)
+void ThreadLoop(void)
 {
   // Serial.print("PIDThreadLoop \n");
-
-  digitalWrite(pinV0, ledState);
 
   if (isI2CDataNew) {
     isI2CDataNew = false;
@@ -159,6 +153,11 @@ void PIDThreadLoop(void)
       break;
     }
   }
+}
+
+void PIDThreadLoop()
+{
+  // noInterrupts();
   if (selfPIDStarted) {
     if (selfPIDStarted == 1) {
     // run PID algorithm to get output
@@ -170,6 +169,7 @@ void PIDThreadLoop(void)
     //outputs(&PIDValve1);
     selfPIDStarted = 0;
   }
+  // interrupts();
 }
 
 void outputs(PIDStruct *structPID)
@@ -177,47 +177,33 @@ void outputs(PIDStruct *structPID)
   if (structPID == NULL)
     return;
 
-  int timeCnt = 50;
+  int timeCnt = 10; // keep two points
   structPID->flipCnt ++;
-  // strCombinePrint(structPID->setPoint, structPID->input, structPID->output, 0);
 
-  float output = abs(structPID->output);
+  float output = (structPID->output);
   if (output < 0) {
     openValve(false, structPID->pin);
-    Serial.println("Close valve");
   }
   else{
-    int flip = output > 1 ? 1 : (int(output * timeCnt));
+    int flip = output > 1 ? timeCnt : (int(output * timeCnt));
     float diff = structPID->setPoint - structPID->input;
 
-    strCombinePrint(structPID->setPoint, structPID->input, structPID->output, 0);
+    // strCombinePrint(structPID->setPoint, structPID->input, structPID->flipCnt, flip);
 
     // if ((output > 0) && (structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
     if ((structPID->flipCnt % timeCnt < flip) && (structPID->setPoint != 0)) {
       openValve(true, structPID->pin);
-      Serial.println("Open valve");
     }
     else {
       openValve(false, structPID->pin);
-      Serial.println("Close valve");
     }
   }
-
 }
 
 void strCombinePrint(float input0, float input1, float input2, float input3)
 {
-  // Serial.print(input0);
-  // Serial.println(",");
-  // Serial.print(input1);
-  // Serial.println(",");
-  // Serial.print(input2);
-  // Serial.println(",");
-  // Serial.print(input3);
-  // Serial.println(",");
-  String str = String(input0) + ',' + String(input1)+ ',' + String(input2)+ ',' + String(input3);
-  Serial.println(str);
-  
+  String str = String(input0) + ',' + String(input1) + ',' + String(input2)+ ',' + String(input3);
+  Serial.println(str);  
 }
 
 void openValve(bool open, int pin)
